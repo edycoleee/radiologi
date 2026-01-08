@@ -57,6 +57,44 @@ def create_app():
         },
     )
 
+    # Swagger model for creating an Observation via GUI (field-mode)
+    observation_input_model = api.model(
+        "ObservationInput",
+        {
+            "identifier_value": fields.String(description="No register / identifier value", example="RG2023I0000174"),
+            "codind_code": fields.String(description="LOINC or code for the observation (accepts codind_code typo)", example="24648-8"),
+            "coding_code": fields.String(description="Coding code (alternative)", example="24648-8"),
+            "coding_display": fields.String(description="Coding display text", example="XR Chest PA upright"),
+            "subject_id": fields.String(description="Patient ID", example="P10443013727"),
+            "subject_display": fields.String(description="Patient display name", example="MILA YASYFI TASBIHA"),
+            "encounter_id": fields.String(description="Encounter ID", example="6dc2dc13-0b5a-4105-996e-6403e43be60a"),
+            "period_start": fields.String(description="Effective datetime (ISO8601)", example="2025-08-31T15:25:00+00:00"),
+            "performer_id": fields.String(description="Performer Practitioner ID", example="10000504193"),
+            "performer_display": fields.String(description="Performer display name", example="dr. RINI SUSANTI, Sp.Rad"),
+            "performer_value": fields.String(description="Observation textual value/result", example="Hasil Bacaan adalah Tak tampak bercak pada kedua lapangan paru"),
+            "service_request_id": fields.String(description="Related ServiceRequest ID", example="a33163ec-ba77-4775-8d20-83035b76e668"),
+            "imaging_study_id": fields.String(description="Related ImagingStudy ID", example="75b7e9d0-c079-419c-84f8-8dba7b9cd585"),
+        },
+    )
+
+    # Swagger model for creating a DiagnosticReport (conclusion)
+    diagnostic_input_model = api.model(
+        "DiagnosticReportInput",
+        {
+            "identifier_value": fields.String(description="No register / identifier value", example="RG2023I0000174"),
+            "codind_code": fields.String(description="LOINC or code for the report (accepts codind_code typo)", example="24648-8"),
+            "coding_display": fields.String(description="Coding display text", example="XR Chest PA upright"),
+            "subject_id": fields.String(description="Patient ID", example="P10443013727"),
+            "encounter_id": fields.String(description="Encounter ID", example="6dc2dc13-0b5a-4105-996e-6403e43be60a"),
+            "period_start": fields.String(description="Effective datetime (ISO8601)", example="2025-08-31T15:25:00+00:00"),
+            "performer_id": fields.String(description="Performer Practitioner ID", example="10000504193"),
+            "imaging_study_id": fields.String(description="ImagingStudy ID", example="75b7e9d0-c079-419c-84f8-8dba7b9cd585"),
+            "observation_id": fields.String(description="Observation ID", example="82b9af58-c98d-4263-9a6f-9a04fdfec43a"),
+            "service_request_id": fields.String(description="Related ServiceRequest ID", example="a33163ec-ba77-4775-8d20-83035b76e668"),
+            "conclusion_text": fields.String(description="Conclusion text", example="Hasil Bacaan adalah Tak tampak bercak pada kedua lapangan paru"),
+        },
+    )
+
 
     @ns.route("/halo")
     class Halo(Resource):
@@ -120,20 +158,6 @@ def create_app():
         @ns.doc(description="Create an Encounter. You can either paste a full FHIR Encounter resource or fill the form fields below.")
         def post(self):
             """Create an Encounter resource on the remote FHIR server.
-
-            Expected JSON body (either full FHIR Encounter resource or fields below):
-            - identifier_value
-            - subject_reference (e.g. "Patient/P10443013727") or subject_id (e.g. "P10443013727")
-            - subject_display
-            - individual_reference (e.g. "Practitioner/10016869420") or individual_id
-            - individual_display
-            - period_start (ISO8601)
-            - period_end (ISO8601) optional (defaults to start + 10 minutes)
-            - location_reference (e.g. "Location/ecff1c64-...") or location_id
-            - location_display
-
-            Authentication: uses env/base config `AUTH_URL`, `CLIENT_ID`, `CLIENT_SECRET`, and `BASE_URL`.
-            If an `ACCESS_TOKEN` env var is present it will be used directly.
             """
 
             data = request.get_json(silent=True) or {}
@@ -142,27 +166,45 @@ def create_app():
             if isinstance(data, dict) and data.get("resourceType") == "Encounter":
                 encounter = data
             else:
-                identifier_value = data.get("identifier_value") or data.get("identifier")
+                # Accept multiple possible field names coming from different clients
+                identifier_value = (
+                    data.get("identifier_value")
+                    or data.get("identifier")
+                    or data.get("identifier_id")
+                )
+
+                # Subject may be provided as full reference or id
                 subject_ref = (
                     data.get("subject_reference")
-                    or ("Patient/" + data.get("subject_id")) if data.get("subject_id") else None
-                    or ("Patient/" + data.get("subject_patient")) if data.get("subject_patient") else None
+                    or ("Patient/" + data.get("subject_id") if data.get("subject_id") else None)
+                    or ("Patient/" + data.get("subject_patient") if data.get("subject_patient") else None)
                 )
                 subject_display = data.get("subject_display")
+
+                # Practitioner / participant fields: support both `individual_*` and `practitioner_*` names
                 individual_ref = (
                     data.get("individual_reference")
-                    or ("Practitioner/" + data.get("individual_id")) if data.get("individual_id") else None
-                    or ("Practitioner/" + data.get("individual_practitioner")) if data.get("individual_practitioner") else None
+                    or ("Practitioner/" + data.get("individual_id") if data.get("individual_id") else None)
+                    or ("Practitioner/" + data.get("individual_practitioner") if data.get("individual_practitioner") else None)
+                    or data.get("practitioner_reference")
+                    or ("Practitioner/" + data.get("practitioner_id") if data.get("practitioner_id") else None)
                 )
-                individual_display = data.get("individual_display")
+                individual_display = (
+                    data.get("individual_display") or data.get("practitioner_name") or data.get("practitioner_display")
+                )
+
                 period_start = data.get("period_start")
                 period_end = data.get("period_end")
+
                 location_ref = (
                     data.get("location_reference")
-                    or ("Location/" + data.get("location_id")) if data.get("location_id") else None
-                    or ("Location/" + data.get("location")) if data.get("location") else None
+                    or ("Location/" + data.get("location_id") if data.get("location_id") else None)
+                    or ("Location/" + data.get("location") if data.get("location") else None)
                 )
                 location_display = data.get("location_display")
+
+                # allow caller to override org id used in identifier/serviceProvider
+                body_org_id = data.get("org_id") or data.get("organization_id") or os.getenv("ORG_ID")
 
                 if not period_start:
                     return {"error": "`period_start` is required when not providing a full Encounter resource."}, 400
@@ -181,7 +223,7 @@ def create_app():
                     "resourceType": "Encounter",
                     "identifier": [
                         {
-                            "system": f"http://sys-ids.kemkes.go.id/encounter/{os.getenv('ORG_ID')}",
+                            "system": f"http://sys-ids.kemkes.go.id/encounter/{body_org_id}",
                             "value": identifier_value,
                         }
                     ],
@@ -219,7 +261,7 @@ def create_app():
                             "period": {"start": period_start, "end": period_end},
                         }
                     ],
-                    "serviceProvider": {"reference": f"Organization/{os.getenv('ORG_ID')}"},
+                    "serviceProvider": {"reference": f"Organization/{body_org_id}"},
                 }
 
             # Resolve auth and base URLs
@@ -302,21 +344,46 @@ def create_app():
                 subject_id = data.get("subject_id")
                 encounter_id = data.get("encounter_id")
                 period_start = data.get("period_start")
-                requester_reference = data.get("requester_reference")
-                requester_display = data.get("requester_display")
-                performer_reference = data.get("performer_reference")
-                performer_display = data.get("performer_display")
+
+                # requester/performer: support both `requester_*` and `practitioner_*` fields
+                requester_reference = (
+                    data.get("requester_reference")
+                    or ("Practitioner/" + data.get("practitioner_id") if data.get("practitioner_id") else None)
+                )
+                requester_display = data.get("requester_display") or data.get("practitioner_name")
+
+                performer_reference = (
+                    data.get("performer_reference")
+                    or ("Practitioner/" + data.get("performer_id") if data.get("performer_id") else None)
+                )
+                performer_display = data.get("performer_display") or data.get("performer_name")
+
+                # coding for requested service: accept either `codind_code` (typo) or `coding_code`
+                coding_code = data.get("codind_code") or data.get("coding_code") or data.get("code")
+                coding_display = data.get("coding_display") or data.get("codingText") or data.get("code_display")
+
+                # allow caller to override org id used in identifier/serviceProvider
+                body_org_id = data.get("org_id") or data.get("organization_id") or os.getenv("ORG_ID")
 
                 # basic validation
                 if not identifier_value or not noacsn or not subject_id or not encounter_id or not period_start:
                     return {"error": "Missing required fields: identifier_value, noacsn, subject_id, encounter_id, period_start"}, 400
+
+                # default coding if not provided
+                code_entry = {
+                    "system": "http://loinc.org",
+                    "code": coding_code or "79103-8",
+                    "display": coding_display or "CT Abdomen W contrast IV",
+                }
+
+                text_display = coding_display or "Pemeriksaan CT Scan Abdomen Atas"
 
                 # build ServiceRequest resource
                 sreq = {
                     "resourceType": "ServiceRequest",
                     "identifier": [
                         {
-                            "system": f"http://sys-ids.kemkes.go.id/servicerequest/{os.getenv('ORG_ID')}",
+                            "system": f"http://sys-ids.kemkes.go.id/servicerequest/{body_org_id}",
                             "value": identifier_value,
                         },
                         {
@@ -329,7 +396,7 @@ def create_app():
                                     }
                                 ]
                             },
-                            "system": f"http://sys-ids.kemkes.go.id/acsn/{os.getenv('ORG_ID')}",
+                            "system": f"http://sys-ids.kemkes.go.id/acsn/{body_org_id}",
                             "value": noacsn,
                         },
                     ],
@@ -348,33 +415,35 @@ def create_app():
                         }
                     ],
                     "code": {
-                        "coding": [
-                            {
-                                "system": "http://loinc.org",
-                                "code": "79103-8",
-                                "display": "CT Abdomen W contrast IV",
-                            }
-                        ],
-                        "text": "Pemeriksaan CT Scan Abdomen Atas",
+                        "coding": [code_entry],
+                        "text": text_display,
                     },
-                    "subject": {"reference": f"Patient/{subject_id}"},
-                    "encounter": {"reference": f"Encounter/{encounter_id}"},
-                    "occurrenceDateTime": period_start,
-                    "authoredOn": period_start,
-                    "requester": {"reference": requester_reference, "display": requester_display},
-                    "performer": [{"reference": performer_reference, "display": performer_display}],
-                    "bodySite": [
+                    "orderDetail": [
                         {
                             "coding": [
                                 {
-                                    "system": "http://snomed.info/sct",
-                                    "code": "80581009",
-                                    "display": "Upper abdomen structure",
+                                    "system": "http://dicom.nema.org/resources/ontology/DCM",
+                                    "code": "DX",
+                                }
+                            ],
+                            "text": "Modality Code: DX",
+                        },
+                        {
+                            "coding": [
+                                {
+                                    "system": "http://sys-ids.kemkes.go.id/ae-title",
+                                    "display": "DX0001",
                                 }
                             ]
                         }
                     ],
-                    "reasonCode": [{"text": "Periksa risiko adanya sumbatan batu empedu"}],
+                    "subject": {"reference": f"Patient/{subject_id}"},
+                    "encounter": {"reference": f"Encounter/{encounter_id}", "display": f"Permintaan pemeriksaan {text_display}"},
+                    "occurrenceDateTime": period_start,
+                    "authoredOn": period_start,
+                    "requester": {"reference": requester_reference, "display": requester_display},
+                    "performer": [{"reference": performer_reference, "display": performer_display}],
+                    "reasonCode": [{"text": "Periksa rutin"}],
                 }
 
             # resolve base url and auth same as other endpoints
@@ -419,6 +488,7 @@ def create_app():
             except requests.RequestException as exc:
                 return {"error": "Failed to POST ServiceRequest", "detail": str(exc)}, 502
 
+
             ctype = sresp.headers.get("Content-Type", "")
             try:
                 if "application/json" in ctype or "+json" in ctype:
@@ -429,6 +499,318 @@ def create_app():
                 return {"raw": sresp.text}, sresp.status_code
 
 
+    @ns.route("/imageid/<string:acsn>")
+    class ImageId(Resource):
+        def get(self, acsn):
+            """Lookup ImagingStudy by ACSN and return the ImagingStudy id."""
+            auth_url = (
+                request.args.get("auth_url") or app.config.get("AUTH_URL") or os.getenv("AUTH_URL")
+            )
+            client_id = (
+                request.args.get("client_id") or app.config.get("CLIENT_ID") or os.getenv("CLIENT_ID")
+            )
+            client_secret = (
+                request.args.get("client_secret") or app.config.get("CLIENT_SECRET") or os.getenv("CLIENT_SECRET")
+            )
+            base_url = (
+                request.args.get("base_url") or app.config.get("BASE_URL") or os.getenv("BASE_URL")
+            )
+            org_id = request.args.get("org_id") or os.getenv("ORG_ID")
+
+            if not base_url:
+                return {"error": "Missing BASE_URL (provide as env BASE_URL or query param `base_url`)"}, 400
+
+            access_token = os.getenv("ACCESS_TOKEN")
+            if not access_token:
+                if not auth_url or not client_id or not client_secret:
+                    return {"error": "Missing auth params. Set AUTH_URL, CLIENT_ID, CLIENT_SECRET in env or pass as query params."}, 400
+                token_url = auth_url.rstrip("/") + "/accesstoken?grant_type=client_credentials"
+                try:
+                    tresp = requests.post(token_url, data={"client_id": client_id, "client_secret": client_secret}, timeout=15)
+                except requests.RequestException as exc:
+                    return {"error": "Failed to contact auth server", "detail": str(exc)}, 502
+                try:
+                    tjson = tresp.json()
+                except Exception:
+                    return {"error": "Invalid token response", "detail": tresp.text}, 502
+                access_token = tjson.get("access_token") or tjson.get("accessToken") or tjson.get("token")
+                if not access_token:
+                    return {"error": "No access token in auth response", "detail": tjson}, 502
+
+            # build ImagingStudy search URL
+            identifier_system = f"http://sys-ids.kemkes.go.id/acsn/{org_id}"
+            imaging_url = f"{base_url.rstrip('/')}" + f"/ImagingStudy?identifier={identifier_system}|{acsn}"
+            headers = {"Authorization": f"Bearer {access_token}", "Accept": "application/fhir+json"}
+
+            try:
+                resp = requests.get(imaging_url, headers=headers, timeout=20)
+            except requests.RequestException as exc:
+                return {"error": "Failed to GET ImagingStudy", "detail": str(exc)}, 502
+
+            ctype = resp.headers.get("Content-Type", "")
+            try:
+                if "application/json" in ctype or "+json" in ctype:
+                    j = resp.json()
+                    # If server returned a Bundle, extract first ImagingStudy id
+                    if isinstance(j, dict) and j.get("resourceType") == "Bundle":
+                        entries = j.get("entry") or []
+                        if not entries:
+                            return {"error": "No ImagingStudy found", "detail": j}, 404
+                        for e in entries:
+                            res = e.get("resource") or {}
+                            if res.get("resourceType") == "ImagingStudy" and res.get("id"):
+                                return {"imagingStudy_id": res.get("id")}, 200
+                        first = entries[0].get("resource") or {}
+                        if first.get("id"):
+                            return {"imagingStudy_id": first.get("id")}, 200
+                        return {"error": "No ImagingStudy id in results", "detail": j}, 502
+                    # If single ImagingStudy returned
+                    if isinstance(j, dict) and j.get("resourceType") == "ImagingStudy":
+                        return {"imagingStudy_id": j.get("id")}, 200
+                    return j, resp.status_code
+                else:
+                    return {"raw": resp.text}, resp.status_code
+            except Exception:
+                return {"raw": resp.text}, resp.status_code
+
+
+    @ns.route("/observation")
+    @ns.expect(observation_input_model, validate=False)
+    class ObservationCreate(Resource):
+        def post(self):
+            data = request.get_json(silent=True) or {}
+
+            # Allow passing a full Observation resource
+            if isinstance(data, dict) and data.get("resourceType") == "Observation":
+                obs = data
+            else:
+                identifier_value = data.get("identifier_value") or data.get("identifier")
+                coding_code = data.get("codind_code") or data.get("coding_code") or data.get("code")
+                coding_display = data.get("coding_display") or data.get("codingText")
+                subject_id = data.get("subject_id")
+                subject_display = data.get("subject_display")
+                encounter_id = data.get("encounter_id")
+                period_start = data.get("period_start")
+                performer_id = data.get("performer_id")
+                performer_display = data.get("performer_display")
+                performer_value = data.get("performer_value") or data.get("valueString")
+                service_request_id = data.get("service_request_id") or data.get("ServiceRequest_id")
+                imaging_study_id = data.get("imaging_study_id") or data.get("ImagingStudy_id")
+
+                body_org_id = data.get("org_id") or data.get("organization_id") or os.getenv("ORG_ID")
+
+                # basic validation
+                if not identifier_value or not subject_id or not encounter_id or not period_start:
+                    return {"error": "Missing required fields: identifier_value, subject_id, encounter_id, period_start"}, 400
+
+                code_entry = {
+                    "system": "http://loinc.org",
+                    "code": coding_code or "79103-8",
+                    "display": coding_display or "Imaging result",
+                }
+
+                obs = {
+                    "resourceType": "Observation",
+                    "identifier": [
+                        {
+                            "system": f"http://sys-ids.kemkes.go.id/observation/{body_org_id}",
+                            "value": identifier_value,
+                        }
+                    ],
+                    "status": "final",
+                    "category": [
+                        {
+                            "coding": [
+                                {
+                                    "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                                    "code": "imaging",
+                                    "display": "Imaging",
+                                }
+                            ]
+                        }
+                    ],
+                    "code": {"coding": [code_entry]},
+                    "subject": {"reference": f"Patient/{subject_id}", "display": subject_display},
+                    "encounter": {"reference": f"Encounter/{encounter_id}"},
+                    "effectiveDateTime": period_start,
+                    "issued": period_start,
+                    "performer": [{"reference": f"Practitioner/{performer_id}", "display": performer_display}],
+                    "valueString": performer_value,
+                    "basedOn": [{"reference": f"ServiceRequest/{service_request_id}"}] if service_request_id else [],
+                    "derivedFrom": [{"reference": f"ImagingStudy/{imaging_study_id}"}] if imaging_study_id else [],
+                }
+
+            # resolve auth/base
+            auth_url = (
+                request.args.get("auth_url") or app.config.get("AUTH_URL") or os.getenv("AUTH_URL")
+            )
+            client_id = (
+                request.args.get("client_id") or app.config.get("CLIENT_ID") or os.getenv("CLIENT_ID")
+            )
+            client_secret = (
+                request.args.get("client_secret") or app.config.get("CLIENT_SECRET") or os.getenv("CLIENT_SECRET")
+            )
+            base_url = (
+                request.args.get("base_url") or app.config.get("BASE_URL") or os.getenv("BASE_URL")
+            )
+
+            if not base_url:
+                return {"error": "Missing BASE_URL (provide as env BASE_URL or query param `base_url`)"}, 400
+
+            access_token = os.getenv("ACCESS_TOKEN")
+            if not access_token:
+                if not auth_url or not client_id or not client_secret:
+                    return {"error": "Missing auth params. Set AUTH_URL, CLIENT_ID, CLIENT_SECRET in env or pass as query params."}, 400
+                token_url = auth_url.rstrip("/") + "/accesstoken?grant_type=client_credentials"
+                try:
+                    tresp = requests.post(token_url, data={"client_id": client_id, "client_secret": client_secret}, timeout=15)
+                except requests.RequestException as exc:
+                    return {"error": "Failed to contact auth server", "detail": str(exc)}, 502
+                try:
+                    tjson = tresp.json()
+                except Exception:
+                    return {"error": "Invalid token response", "detail": tresp.text}, 502
+                access_token = tjson.get("access_token") or tjson.get("accessToken") or tjson.get("token")
+                if not access_token:
+                    return {"error": "No access token in auth response", "detail": tjson}, 502
+
+            obs_url = base_url.rstrip("/") + "/Observation"
+            headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/fhir+json"}
+            try:
+                oresp = requests.post(obs_url, json=obs, headers=headers, timeout=20)
+            except requests.RequestException as exc:
+                return {"error": "Failed to POST Observation", "detail": str(exc)}, 502
+
+            ctype = oresp.headers.get("Content-Type", "")
+            try:
+                if "application/json" in ctype or "+json" in ctype:
+                    return oresp.json(), oresp.status_code
+                else:
+                    return {"raw": oresp.text}, oresp.status_code
+            except Exception:
+                return {"raw": oresp.text}, oresp.status_code
+
+
+    @ns.route("/conclusion")
+    @ns.expect(diagnostic_input_model, validate=False)
+    class DiagnosticCreate(Resource):
+        def post(self):
+            data = request.get_json(silent=True) or {}
+
+            # Accept a full DiagnosticReport resource
+            if isinstance(data, dict) and data.get("resourceType") == "DiagnosticReport":
+                drep = data
+            else:
+                identifier_value = data.get("identifier_value") or data.get("identifier")
+                coding_code = data.get("codind_code") or data.get("coding_code") or data.get("code")
+                coding_display = data.get("coding_display") or data.get("codingText")
+                subject_id = data.get("subject_id")
+                encounter_id = data.get("encounter_id")
+                period_start = data.get("period_start")
+                performer_id = data.get("performer_id")
+                imaging_study_id = data.get("imaging_study_id")
+                observation_id = data.get("observation_id") or data.get("ObservationId")
+                service_request_id = data.get("service_request_id")
+                conclusion_text = data.get("conclusion_text") or data.get("conclusion")
+
+                body_org_id = data.get("org_id") or data.get("organization_id") or os.getenv("ORG_ID")
+
+                # basic validation
+                if not identifier_value or not subject_id or not encounter_id or not period_start:
+                    return {"error": "Missing required fields: identifier_value, subject_id, encounter_id, period_start"}, 400
+
+                code_entry = {
+                    "system": "http://loinc.org",
+                    "code": coding_code or "79103-8",
+                    "display": coding_display or "Imaging",
+                }
+
+                drep = {
+                    "resourceType": "DiagnosticReport",
+                    "identifier": [
+                        {
+                            "system": f"http://sys-ids.kemkes.go.id/diagnostic/{body_org_id}/rad",
+                            "use": "official",
+                            "value": identifier_value,
+                        }
+                    ],
+                    "status": "final",
+                    "category": [
+                        {
+                            "coding": [
+                                {
+                                    "system": "http://terminology.hl7.org/CodeSystem/v2-0074",
+                                    "code": "RAD",
+                                    "display": "Radiology",
+                                }
+                            ]
+                        }
+                    ],
+                    "code": {"coding": [code_entry]},
+                    "subject": {"reference": f"Patient/{subject_id}"},
+                    "encounter": {"reference": f"Encounter/{encounter_id}"},
+                    "effectiveDateTime": period_start,
+                    "issued": period_start,
+                    "performer": [
+                        {"reference": f"Practitioner/{performer_id}"},
+                        {"reference": f"Organization/{body_org_id}"},
+                    ],
+                    "imagingStudy": [{"reference": f"ImagingStudy/{imaging_study_id}"}] if imaging_study_id else [],
+                    "result": [{"reference": f"Observation/{observation_id}"}] if observation_id else [],
+                    "basedOn": [{"reference": f"ServiceRequest/{service_request_id}"}] if service_request_id else [],
+                    "conclusion": conclusion_text or "",
+                }
+
+            # resolve auth/base
+            auth_url = (
+                request.args.get("auth_url") or app.config.get("AUTH_URL") or os.getenv("AUTH_URL")
+            )
+            client_id = (
+                request.args.get("client_id") or app.config.get("CLIENT_ID") or os.getenv("CLIENT_ID")
+            )
+            client_secret = (
+                request.args.get("client_secret") or app.config.get("CLIENT_SECRET") or os.getenv("CLIENT_SECRET")
+            )
+            base_url = (
+                request.args.get("base_url") or app.config.get("BASE_URL") or os.getenv("BASE_URL")
+            )
+
+            if not base_url:
+                return {"error": "Missing BASE_URL (provide as env BASE_URL or query param `base_url`)"}, 400
+
+            access_token = os.getenv("ACCESS_TOKEN")
+            if not access_token:
+                if not auth_url or not client_id or not client_secret:
+                    return {"error": "Missing auth params. Set AUTH_URL, CLIENT_ID, CLIENT_SECRET in env or pass as query params."}, 400
+                token_url = auth_url.rstrip("/") + "/accesstoken?grant_type=client_credentials"
+                try:
+                    tresp = requests.post(token_url, data={"client_id": client_id, "client_secret": client_secret}, timeout=15)
+                except requests.RequestException as exc:
+                    return {"error": "Failed to contact auth server", "detail": str(exc)}, 502
+                try:
+                    tjson = tresp.json()
+                except Exception:
+                    return {"error": "Invalid token response", "detail": tresp.text}, 502
+                access_token = tjson.get("access_token") or tjson.get("accessToken") or tjson.get("token")
+                if not access_token:
+                    return {"error": "No access token in auth response", "detail": tjson}, 502
+
+            drep_url = base_url.rstrip("/") + "/DiagnosticReport"
+            headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/fhir+json"}
+            try:
+                dresp = requests.post(drep_url, json=drep, headers=headers, timeout=20)
+            except requests.RequestException as exc:
+                return {"error": "Failed to POST DiagnosticReport", "detail": str(exc)}, 502
+
+            ctype = dresp.headers.get("Content-Type", "")
+            try:
+                if "application/json" in ctype or "+json" in ctype:
+                    return dresp.json(), dresp.status_code
+                else:
+                    return {"raw": dresp.text}, dresp.status_code
+            except Exception:
+                return {"raw": dresp.text}, dresp.status_code
+
     api.add_namespace(ns)
 
     return app
@@ -436,4 +818,4 @@ def create_app():
 
 if __name__ == "__main__":
     app = create_app()
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000)

@@ -66,7 +66,9 @@ Instruksi singkat untuk menjalankan:
 ```bash
 # Buat & aktifkan virtualenv (jika belum):
 python3 -m venv .venv
+ # Windows: python -m venv .venv
 source .venv/bin/activate
+ # Windows: .venv\Scripts\activate
 
 # Pasang dependensi:
 pip install --upgrade pip
