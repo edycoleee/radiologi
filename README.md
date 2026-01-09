@@ -81,3 +81,8 @@ python app.py
 ```
 
 Catatan: `.env` dimuat otomatis oleh `app.py` (menggunakan `python-dotenv`). Untuk keamanan, pertimbangkan menyimpan `CLIENT_SECRET` di vault/secret manager saat deploy.
+
+
+=============================
+
+
