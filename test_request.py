@@ -1,4 +1,4 @@
-from app1 import create_app
+from tmp.app1 import create_app
 
 
 def run_test():

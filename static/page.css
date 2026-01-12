@@ -1,0 +1,32 @@
+body {
+    background: #f5f7fa;
+}
+
+.nav-tabs .nav-link {
+    color: #555;
+    font-weight: 500;
+    border: none;
+    padding: 12px 15px;
+}
+
+.nav-tabs .nav-link.active {
+    color: #0d6efd;
+    border-bottom: 3px solid #0d6efd;
+    background: transparent;
+}
+
+.result-box {
+    display: none;
+    background: #f8f9fa;
+    border-left: 4px solid #0dcaf0;
+    padding: 15px;
+    margin-top: 10px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+}
+
+.btn-primary-gradient {
+    background: linear-gradient(45deg, #0d6efd, #0043a8);
+    border: none;
+}

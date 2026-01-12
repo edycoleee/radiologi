@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>SatuSehat Radiology Gateway</title>
+
+    <!-- Bootstrap & FontAwesome CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='page.css') }}">
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 shadow">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fa-solid fa-hospital-user me-2 text-info"></i>
+                SatuSehat Radiology Gateway
+                <span class="badge bg-secondary ms-2">v1.1</span>
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link text-warning" href="/api/docs" target="_blank">
+                    <i class="fa-solid fa-code me-1"></i> Swagger API Docs
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mb-4">
+        <ul class="nav nav-tabs" id="mainTab" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-dicom" type="button">
+                    <i class="fa-solid fa-microchip me-1"></i> DICOM Router
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-fhir" type="button">
+                    <i class="fa-solid fa-hospital me-1"></i> FHIR SatuSehat
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-batch" type="button">
+                    <i class="fa-solid fa-diagram-project me-1"></i> Batch Workflow
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-tools" type="button">
+                    <i class="fa-solid fa-screwdriver-wrench me-1"></i> Tools
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content pt-3">
+
+            <!-- ============== TAB DICOM ROUTER ============== -->
+            <div class="tab-pane fade show active" id="tab-dicom">
+                <div class="row g-4">
+                    <div class="col-lg-6">
+                        <div class="card shadow-sm h-100">
+                            <div class="card-header py-3">
+                                <ul class="nav nav-tabs card-header-tabs">
+                                    <li class="nav-item">
+                                        <button class="nav-link active" data-bs-toggle="tab"
+                                            data-bs-target="#dicom-process" type="button">
+                                            <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Process
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="card-body p-4">
+                                <div class="tab-content">
+                                    <div class="tab-pane fade show active" id="dicom-process">
+                                        <p class="text-muted small mb-2">
+                                            Ambil DICOM dari PACS → (opsional) ubah metadata → kirim ke DICOM Router.
+                                        </p>
+                                        <form id="form-dicom-process">
+                                            <div class="mb-3">
+                                                <label class="form-label small fw-bold">Study Instance UID</label>
+                                                <input type="text" class="form-control" name="study"
+                                                    placeholder="1.2.840.xxxx..." required>
+                                            </div>
+                                            <div class="row mb-3">
+                                                <div class="col">
+                                                    <label class="form-label small fw-bold">Patient ID
+                                                        (opsional)</label>
+                                                    <input type="text" class="form-control" name="patientid"
+                                                        placeholder="P12345">
+                                                </div>
+                                                <div class="col">
+                                                    <label class="form-label small fw-bold">Accession Number
+                                                        (opsional)</label>
+                                                    <input type="text" class="form-control" name="accesionnum"
+                                                        placeholder="20250002">
+                                                </div>
+                                            </div>
+                                            <div class="d-flex gap-2">
+                                                <button type="button" class="btn btn-outline-secondary btn-sm"
+                                                    data-autofill="dicom-process">
+                                                    Auto Fill
+                                                </button>
+                                                <button type="submit"
+                                                    class="btn btn-primary-gradient text-white ms-auto">
+                                                    EKSEKUSI PROSES
+                                                </button>
+                                            </div>
+                                        </form>
+                                        <pre class="result-box mt-3" id="result-dicom-process"></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- DICOM Info Panel -->
+                    <div class="col-lg-6">
+                        <div class="card shadow-sm h-100">
+                            <div class="card-header py-3">
+                                <strong>Informasi</strong>
+                            </div>
+                            <div class="card-body small">
+                                <p><strong>Alur /dicom/process:</strong></p>
+                                <ol>
+                                    <li>GET metadata dari PACS (dcm4chee) via WADO-RS</li>
+                                    <li>Download DICOM file (WADO)</li>
+                                    <li>Optional: dcmodify (PatientID, Accession Number)</li>
+                                    <li>storescu → DICOM Router</li>
+                                </ol>
+                                <p class="mb-1"><strong>Endpoint:</strong> <code>POST /api/dicom/process</code></p>
+                                <p class="mb-1"><strong>Body:</strong> <code>{ study, patientid?, accesionnum? }</code>
+                                </p>
+                                <p class="text-muted mt-2">Lihat detail field di Swagger UI.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============== TAB FHIR SATUSEHAT ============== -->
+            <div class="tab-pane fade" id="tab-fhir">
+                <div class="row g-4">
+                    <div class="col-lg-6">
+                        <!-- Encounter -->
+                        <div class="card shadow-sm mb-4">
+                            <div class="card-header py-2">
+                                <strong><i class="fa-solid fa-person-walking me-1 text-primary"></i> Encounter</strong>
+                            </div>
+
+                            <div class="card-body">
+                                <form id="form-encounter">
+
+                                    <!-- Identifier -->
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Identifier (No Register)</label>
+                                        <input type="text" class="form-control" name="identifier_value"
+                                            placeholder="RG2023I0000---">
+                                    </div>
+
+                                    <!-- Subject -->
+                                    <hr class="text-muted">
+                                    <div class="fw-bold small text-primary mb-1">Subject (Patient)</div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Subject ID</label>
+                                        <input type="text" class="form-control" name="subject_id"
+                                            placeholder="P104430-----">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Subject Reference</label>
+                                        <input type="text" class="form-control" name="subject_reference"
+                                            placeholder="Patient/P104430-----">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Subject Display</label>
+                                        <input type="text" class="form-control" name="subject_display"
+                                            placeholder="MILA YASYFI TASBIHA">
+                                    </div>
+
+                                    <!-- Practitioner -->
+                                    <hr class="text-muted">
+                                    <div class="fw-bold small text-primary mb-1">Practitioner</div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Practitioner ID</label>
+                                        <input type="text" class="form-control" name="individual_id"
+                                            placeholder="100168-----">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Practitioner Reference</label>
+                                        <input type="text" class="form-control" name="individual_reference"
+                                            placeholder="Practitioner/100168-----">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Practitioner Display</label>
+                                        <input type="text" class="form-control" name="individual_display"
+                                            placeholder="dr. ------">
+                                    </div>
+
+                                    <!-- Period -->
+                                    <hr class="text-muted">
+                                    <div class="fw-bold small text-primary mb-1">Period</div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Period Start (ISO8601)</label>
+                                        <input type="text" class="form-control" name="period_start"
+                                            placeholder="2025-08-01T05:57:41+00:00">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Period End (ISO8601)</label>
+                                        <input type="text" class="form-control" name="period_end"
+                                            placeholder="2025-08-01T06:07:41+00:00">
+                                    </div>
+
+                                    <!-- Location -->
+                                    <hr class="text-muted">
+                                    <div class="fw-bold small text-primary mb-1">Location</div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Location ID</label>
+                                        <input type="text" class="form-control" name="location_id"
+                                            placeholder="ecff1c64-3f62-4469-b577-ea38f263b276">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Location Reference</label>
+                                        <input type="text" class="form-control" name="location_reference"
+                                            placeholder="Location/ecff1c64-3f62-4469-------">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Location Display</label>
+                                        <input type="text" class="form-control" name="location_display"
+                                            placeholder="Ruang-----">
+                                    </div>
+
+                                    <!-- Buttons -->
+                                    <div class="d-flex gap-2 mt-2">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                            data-autofill="encounter">
+                                            Auto Fill
+                                        </button>
+                                        <button type="submit" class="btn btn-primary-gradient text-white ms-auto">
+                                            POST Encounter
+                                        </button>
+                                    </div>
+                                </form>
+
+                                <pre class="result-box" id="result-encounter"></pre>
+                            </div>
+                        </div>
+
+
+                        <!-- ServiceRequest -->
+                        <div class="card shadow-sm">
+                            <div class="card-header py-2">
+                                <strong><i class="fa-solid fa-file-medical me-1 text-success"></i>
+                                    ServiceRequest</strong>
+                            </div>
+                            <div class="card-body">
+                                <form id="form-servicereq">
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Identifier (No Register)</label>
+                                        <input type="text" class="form-control" name="identifier_value">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">NOACSN</label>
+                                        <input type="text" class="form-control" name="noacsn">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Subject ID</label>
+                                        <input type="text" class="form-control" name="subject_id">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Encounter ID</label>
+                                        <input type="text" class="form-control" name="encounter_id">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Occurrence DateTime</label>
+                                        <input type="text" class="form-control" name="period_start">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Requester Reference</label>
+                                        <input type="text" class="form-control" name="requester_reference">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Requester Display</label>
+                                        <input type="text" class="form-control" name="requester_display">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Performer Reference</label>
+                                        <input type="text" class="form-control" name="performer_reference">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Performer Display</label>
+                                        <input type="text" class="form-control" name="performer_display">
+                                    </div>
+                                    <div class="d-flex gap-2 mt-2">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                            data-autofill="servicereq">
+                                            Auto Fill
+                                        </button>
+                                        <button type="submit" class="btn btn-primary-gradient text-white ms-auto">
+                                            POST ServiceRequest
+                                        </button>
+                                    </div>
+                                </form>
+                                <pre class="result-box" id="result-servicereq"></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-6">
+                        <!-- Observation -->
+                        <div class="card shadow-sm mb-4">
+                            <div class="card-header py-2">
+                                <strong><i class="fa-solid fa-eye me-1 text-warning"></i> Observation</strong>
+                            </div>
+                            <div class="card-body">
+                                <form id="form-observation">
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Identifier</label>
+                                        <input type="text" class="form-control" name="identifier_value">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Subject ID</label>
+                                        <input type="text" class="form-control" name="subject_id">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Encounter ID</label>
+                                        <input type="text" class="form-control" name="encounter_id">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Performer ID</label>
+                                        <input type="text" class="form-control" name="performer_id">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Effective DateTime</label>
+                                        <input type="text" class="form-control" name="period_start">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Value (Report Text)</label>
+                                        <textarea class="form-control" name="performer_value" rows="2"></textarea>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Coding Code (LOINC)</label>
+                                        <input type="text" class="form-control" name="codind_code">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Coding Display</label>
+                                        <input type="text" class="form-control" name="coding_display">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Subject Display</label>
+                                        <input type="text" class="form-control" name="subject_display">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Performer Display</label>
+                                        <input type="text" class="form-control" name="performer_display">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">ServiceRequest ID</label>
+                                        <input type="text" class="form-control" name="service_request_id">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">ImagingStudy ID</label>
+                                        <input type="text" class="form-control" name="imaging_study_id">
+                                    </div>
+
+                                    <div class="d-flex gap-2 mt-2">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                            data-autofill="observation">
+                                            Auto Fill
+                                        </button>
+                                        <button type="submit" class="btn btn-primary-gradient text-white ms-auto">
+                                            POST Observation
+                                        </button>
+                                    </div>
+                                </form>
+                                <pre class="result-box" id="result-observation"></pre>
+                            </div>
+                        </div>
+
+                        <!-- DiagnosticReport -->
+                        <div class="card shadow-sm">
+                            <div class="card-header py-2">
+                                <strong><i class="fa-solid fa-clipboard-list me-1 text-danger"></i>
+                                    DiagnosticReport</strong>
+                            </div>
+                            <div class="card-body">
+                                <form id="form-diagnostic">
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Identifier</label>
+                                        <input type="text" class="form-control" name="identifier_value">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Subject ID</label>
+                                        <input type="text" class="form-control" name="subject_id">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Encounter ID</label>
+                                        <input type="text" class="form-control" name="encounter_id">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Performer ID</label>
+                                        <input type="text" class="form-control" name="performer_id">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Observation ID</label>
+                                        <input type="text" class="form-control" name="observation_id">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">ServiceRequest ID</label>
+                                        <input type="text" class="form-control" name="service_request_id">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Conclusion Text</label>
+                                        <textarea class="form-control" name="conclusion_text" rows="2"></textarea>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Coding Code (LOINC)</label>
+                                        <input type="text" class="form-control" name="codind_code">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Coding Display</label>
+                                        <input type="text" class="form-control" name="coding_display">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Effective DateTime</label>
+                                        <input type="text" class="form-control" name="period_start">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">ImagingStudy ID</label>
+                                        <input type="text" class="form-control" name="imaging_study_id">
+                                    </div>
+
+                                    <div class="d-flex gap-2 mt-2">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                            data-autofill="diagnostic">
+                                            Auto Fill
+                                        </button>
+                                        <button type="submit" class="btn btn-primary-gradient text-white ms-auto">
+                                            POST DiagnosticReport
+                                        </button>
+                                    </div>
+                                </form>
+                                <pre class="result-box" id="result-diagnostic"></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============== TAB BATCH WORKFLOW ============== -->
+            <div class="tab-pane fade" id="tab-batch">
+                <div class="row g-4">
+                    <div class="col-lg-6">
+                        <!-- Batch1 -->
+                        <div class="card shadow-sm mb-4">
+                            <div class="card-header py-2">
+                                <strong><i class="fa-solid fa-layer-group me-1 text-primary"></i> Batch1 (Encounter +
+                                    ServiceRequest)</strong>
+                            </div>
+                            <div class="card-body">
+                                <form id="form-batch1">
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Identifier (No Register)</label>
+                                        <input type="text" class="form-control" name="identifier_value">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Subject ID</label>
+                                        <input type="text" class="form-control" name="subject_id">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Practitioner ID</label>
+                                        <input type="text" class="form-control" name="individual_id">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">NOACSN</label>
+                                        <input type="text" class="form-control" name="noacsn">
+                                    </div>
+                                    <!-- Encounter Fields -->
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Subject Reference</label>
+                                        <input type="text" class="form-control" name="subject_reference">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Subject Display</label>
+                                        <input type="text" class="form-control" name="subject_display">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Practitioner Reference</label>
+                                        <input type="text" class="form-control" name="individual_reference">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Practitioner Display</label>
+                                        <input type="text" class="form-control" name="individual_display">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Period Start</label>
+                                        <input type="text" class="form-control" name="period_start">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Period End</label>
+                                        <input type="text" class="form-control" name="period_end">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Location ID</label>
+                                        <input type="text" class="form-control" name="location_id">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Location Reference</label>
+                                        <input type="text" class="form-control" name="location_reference">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Location Display</label>
+                                        <input type="text" class="form-control" name="location_display">
+                                    </div>
+
+                                    <!-- ServiceRequest Fields -->
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Requester Reference</label>
+                                        <input type="text" class="form-control" name="requester_reference">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Requester Display</label>
+                                        <input type="text" class="form-control" name="requester_display">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Performer Reference</label>
+                                        <input type="text" class="form-control" name="performer_reference">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Performer Display</label>
+                                        <input type="text" class="form-control" name="performer_display">
+                                    </div>
+
+                                    <div class="d-flex gap-2 mt-2">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                            data-autofill="batch1">
+                                            Auto Fill
+                                        </button>
+                                        <button type="submit" class="btn btn-primary-gradient text-white ms-auto">
+                                            RUN Batch1
+                                        </button>
+                                    </div>
+                                </form>
+                                <pre class="result-box" id="result-batch1"></pre>
+                            </div>
+                        </div>
+
+                        <!-- Batch2 -->
+                        <div class="card shadow-sm">
+                            <div class="card-header py-2">
+                                <strong><i class="fa-solid fa-layer-group me-1 text-success"></i> Batch2 (Observation +
+                                    DiagnosticReport)</strong>
+                            </div>
+                            <div class="card-body">
+                                <form id="form-batch2">
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Identifier</label>
+                                        <input type="text" class="form-control" name="identifier_value">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Subject ID</label>
+                                        <input type="text" class="form-control" name="subject_id">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Encounter ID</label>
+                                        <input type="text" class="form-control" name="encounter_id">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Coding Code (LOINC)</label>
+                                        <input type="text" class="form-control" name="codind_code">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Coding Display</label>
+                                        <input type="text" class="form-control" name="coding_display">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Subject Display</label>
+                                        <input type="text" class="form-control" name="subject_display">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Effective DateTime</label>
+                                        <input type="text" class="form-control" name="period_start">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Performer Display</label>
+                                        <input type="text" class="form-control" name="performer_display">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Performer Value (Report Text)</label>
+                                        <textarea class="form-control" name="performer_value" rows="2"></textarea>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Performer ID</label>
+                                        <input type="text" class="form-control" name="performer_id">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">ServiceRequest ID</label>
+                                        <input type="text" class="form-control" name="service_request_id">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">ImagingStudy ID</label>
+                                        <input type="text" class="form-control" name="imaging_study_id">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Conclusion Text</label>
+                                        <textarea class="form-control" name="conclusion_text" rows="2"></textarea>
+                                    </div>
+
+                                    <div class="d-flex gap-2 mt-2">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                            data-autofill="batch2">
+                                            Auto Fill
+                                        </button>
+                                        <button type="submit" class="btn btn-primary-gradient text-white ms-auto">
+                                            RUN Batch2
+                                        </button>
+                                    </div>
+                                </form>
+                                <pre class="result-box" id="result-batch2"></pre>
+                            </div>
+                        </div>
+
+
+
+                        <!-- Batch3 -->
+                        <div class="card shadow-sm mb-4">
+                            <div class="card-header py-2">
+                                <strong><i class="fa-solid fa-layer-group me-1 text-warning"></i> Batch3 (Encounter → SR
+                                    → ImagingStudy → Obs → DR)</strong>
+                            </div>
+                            <div class="card-body">
+                                <form id="form-batch3">
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Identifier</label>
+                                        <input type="text" class="form-control" name="identifier_value">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Subject ID</label>
+                                        <input type="text" class="form-control" name="subject_id">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">NOACSN</label>
+                                        <input type="text" class="form-control" name="noacsn">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Performer ID</label>
+                                        <input type="text" class="form-control" name="performer_id">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Conclusion Text</label>
+                                        <textarea class="form-control" name="conclusion_text" rows="2"></textarea>
+                                    </div>
+                                    <!-- Encounter -->
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Subject Reference</label>
+                                        <input type="text" class="form-control" name="subject_reference">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Subject Display</label>
+                                        <input type="text" class="form-control" name="subject_display">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Practitioner Reference</label>
+                                        <input type="text" class="form-control" name="individual_reference">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Practitioner Display</label>
+                                        <input type="text" class="form-control" name="individual_display">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Period Start</label>
+                                        <input type="text" class="form-control" name="period_start">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Period End</label>
+                                        <input type="text" class="form-control" name="period_end">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Location ID</label>
+                                        <input type="text" class="form-control" name="location_id">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Location Reference</label>
+                                        <input type="text" class="form-control" name="location_reference">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Location Display</label>
+                                        <input type="text" class="form-control" name="location_display">
+                                    </div>
+
+                                    <!-- ServiceRequest -->
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Requester Reference</label>
+                                        <input type="text" class="form-control" name="requester_reference">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Requester Display</label>
+                                        <input type="text" class="form-control" name="requester_display">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Performer Reference</label>
+                                        <input type="text" class="form-control" name="performer_reference">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Performer Display</label>
+                                        <input type="text" class="form-control" name="performer_display">
+                                    </div>
+
+                                    <!-- Observation -->
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Coding Code (LOINC)</label>
+                                        <input type="text" class="form-control" name="codind_code">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Coding Display</label>
+                                        <input type="text" class="form-control" name="coding_display">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Performer Value (Report Text)</label>
+                                        <textarea class="form-control" name="performer_value" rows="2"></textarea>
+                                    </div>
+
+                                    <!-- ImagingStudy -->
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">ImagingStudy ID</label>
+                                        <input type="text" class="form-control" name="imaging_study_id">
+                                    </div>
+
+                                    <div class="d-flex gap-2 mt-2">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                            data-autofill="batch3">
+                                            Auto Fill
+                                        </button>
+                                        <button type="submit" class="btn btn-primary-gradient text-white ms-auto">
+                                            RUN Batch3
+                                        </button>
+                                    </div>
+                                </form>
+                                <pre class="result-box" id="result-batch3"></pre>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <!-- Batch4 -->
+                        <div class="card shadow-sm">
+                            <div class="card-header py-2">
+                                <strong><i class="fa-solid fa-layer-group me-1 text-danger"></i>
+                                    Batch4 (Encounter → SR → /process → ImagingStudy → Obs → DR)
+                                </strong>
+                            </div>
+
+                            <div class="card-body">
+                                <form id="form-batch4">
+
+                                    <!-- Identifier -->
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Identifier</label>
+                                        <input type="text" class="form-control" name="identifier_value">
+                                    </div>
+
+                                    <!-- Encounter -->
+                                    <hr class="text-muted">
+                                    <div class="fw-bold small text-primary mb-1">Encounter</div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Subject ID</label>
+                                        <input type="text" class="form-control" name="subject_id">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Subject Reference</label>
+                                        <input type="text" class="form-control" name="subject_reference">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Subject Display</label>
+                                        <input type="text" class="form-control" name="subject_display">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Individual ID</label>
+                                        <input type="text" class="form-control" name="individual_id">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Individual Reference</label>
+                                        <input type="text" class="form-control" name="individual_reference">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Individual Display</label>
+                                        <input type="text" class="form-control" name="individual_display">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Period Start</label>
+                                        <input type="text" class="form-control" name="period_start">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Period End</label>
+                                        <input type="text" class="form-control" name="period_end">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Location ID</label>
+                                        <input type="text" class="form-control" name="location_id">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Location Reference</label>
+                                        <input type="text" class="form-control" name="location_reference">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Location Display</label>
+                                        <input type="text" class="form-control" name="location_display">
+                                    </div>
+
+                                    <!-- ServiceRequest -->
+                                    <hr class="text-muted">
+                                    <div class="fw-bold small text-primary mb-1">Service Request</div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">NOACSN</label>
+                                        <input type="text" class="form-control" name="noacsn">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Requester Reference</label>
+                                        <input type="text" class="form-control" name="requester_reference">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Requester Display</label>
+                                        <input type="text" class="form-control" name="requester_display">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Performer ID</label>
+                                        <input type="text" class="form-control" name="performer_id">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Performer Reference</label>
+                                        <input type="text" class="form-control" name="performer_reference">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Performer Display</label>
+                                        <input type="text" class="form-control" name="performer_display">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Coding Code</label>
+                                        <input type="text" class="form-control" name="codind_code">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Coding Display</label>
+                                        <input type="text" class="form-control" name="coding_display">
+                                    </div>
+
+                                    <!-- Observation -->
+                                    <hr class="text-muted">
+                                    <div class="fw-bold small text-primary mb-1">Observation</div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Performer Value</label>
+                                        <textarea class="form-control" name="performer_value" rows="2"></textarea>
+                                    </div>
+
+                                    <!-- Diagnostic Report -->
+                                    <hr class="text-muted">
+                                    <div class="fw-bold small text-primary mb-1">Diagnostic Report</div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Conclusion Text</label>
+                                        <textarea class="form-control" name="conclusion_text" rows="2"></textarea>
+                                    </div>
+
+                                    <!-- DICOM -->
+                                    <hr class="text-muted">
+                                    <div class="fw-bold small text-primary mb-1">DICOM Processing</div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Study UID</label>
+                                        <input type="text" class="form-control" name="study">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Patient ID (DICOM)</label>
+                                        <input type="text" class="form-control" name="patientid">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Accession Number</label>
+                                        <input type="text" class="form-control" name="accesionnum">
+                                    </div>
+
+                                    <!-- Buttons -->
+                                    <div class="d-flex gap-2 mt-2">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                            data-autofill="batch4">
+                                            Auto Fill
+                                        </button>
+                                        <button type="submit" class="btn btn-primary-gradient text-white ms-auto">
+                                            RUN Batch4
+                                        </button>
+                                    </div>
+                                </form>
+
+                                <pre class="result-box" id="result-batch4"></pre>
+                            </div>
+                        </div>
+
+
+
+
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============== TAB TOOLS ============== -->
+            <div class="tab-pane fade" id="tab-tools">
+                <div class="row g-4">
+                    <div class="col-lg-6">
+                        <div class="card shadow-sm">
+                            <div class="card-header py-2">
+                                <strong><i class="fa-solid fa-magnifying-glass me-1 text-primary"></i> ImagingStudy
+                                    Lookup</strong>
+                            </div>
+                            <div class="card-body">
+                                <form id="form-imaging-lookup">
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Accession Number (ACSN)</label>
+                                        <input type="text" class="form-control" name="acsn" placeholder="20250002">
+                                    </div>
+                                    <div class="d-flex gap-2 mt-2">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                            data-autofill="imaging">
+                                            Auto Fill
+                                        </button>
+                                        <button type="submit" class="btn btn-primary-gradient text-white ms-auto">
+                                            Lookup ImagingStudy
+                                        </button>
+                                    </div>
+                                </form>
+                                <pre class="result-box" id="result-imaging-lookup"></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-6">
+                        <div class="card shadow-sm h-100">
+                            <div class="card-header py-2">
+                                <strong>Info & Tips</strong>
+                            </div>
+                            <div class="card-body small">
+                                <p><strong>ACSN → ImagingStudy:</strong></p>
+                                <p class="mb-1">
+                                    Endpoint: <code>GET /api/satset/imageid/&lt;acsn&gt;</code>
+                                </p>
+                                <p class="mb-1">
+                                    Response: <code>{ "imagingStudy_id": "..." }</code>
+                                </p>
+                                <p class="mt-3">
+                                    Gunakan ini sebelum menjalankan Batch2/Batch3 jika ingin memasukkan ImagingStudy ID
+                                    secara manual.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='page.js') }}"></script>
+</body>
+
+</html>

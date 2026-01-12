@@ -46,43 +46,189 @@ pip freeze > requirements.txt
 deactivate
 ```
 
-Jika anda ingin alternatif pengelola dependensi seperti `poetry` atau `pipenv`, beri tahu saya dan saya
-akan tambahkan instruksi opsional untuk salah satu dari keduanya.
+### SatuSehat Gateway + Radiology Workflow + DICOM Router
+```markdown
+# 🏥 SatuSehat Radiology Gateway & DICOM Router API
 
-**Environment file (.env)**
+SatuSehat Radiology Gateway adalah layanan API modular yang mengintegrasikan:
 
-A `.env` file is included for convenience with these variables (don't commit secrets in public repos):
+- **FHIR SatuSehat** (Encounter, ServiceRequest, Observation, DiagnosticReport)
+- **Radiology Workflow Automation** (Batch1–Batch4)
+- **DICOM PACS (dcm4chee)** → **DICOM Router** (storescu)
+- **ImagingStudy Lookup** berdasarkan ACSN
+- **DICOM Processing** (WADO download → dcmodify → storescu)
 
+API ini dirancang untuk workflow radiologi modern yang terintegrasi penuh dari **pendaftaran pasien → permintaan pemeriksaan → pengiriman DICOM → hasil bacaan → laporan radiologi**.
 ```
-AUTH_URL=https://api-satusehat.kemkes.go.id/oauth2/v1
-BASE_URL=https://api-satusehat.kemkes.go.id/fhir-r4/v1
-ORG_ID=100025702
-CLIENT_ID=Gzn7YjXv0tQrNIlzgFliVAiBBkLLgVLEYsuXqmNVnwfapAxD
-CLIENT_SECRET=fbPy8SDIkcrx1V7OaH1mHfx0xebHwBJBL4Fw8gW0Gi6MjIFrt9vWgW7NOIVNibGt
+---
+
+# 📂 Struktur Proyek
+```
+project/
+│── app.py
+│── config.py
+│
+├── satusehat/
+│   ├── routes.py
+│   ├── service_encounter.py
+│   ├── service_servicereq.py
+│   ├── service_observation.py
+│   ├── service_diagnostic.py
+│   ├── service_imaging.py
+│   ├── service_dicom.py
+│   ├── service_batch1.py
+│   ├── service_batch2.py
+│   ├── service_batch3.py
+│   └── service_batch4.py
+│
+└── common/
+├── auth.py
+└── fhir_client.py
 ```
 
-Instruksi singkat untuk menjalankan:
+Semua endpoint dipisahkan secara modular untuk memudahkan maintenance, debugging, dan pengembangan.
 
-```bash
-# Buat & aktifkan virtualenv (jika belum):
-python3 -m venv .venv
- # Windows: python -m venv .venv
-source .venv/bin/activate
- # Windows: .venv\Scripts\activate
+---
 
-# Pasang dependensi:
-pip install --upgrade pip
+# ⚙️ Konfigurasi (config.py)
+
+```python
+DCM4CHEE_URL
+ROUTER_IP
+ROUTER_PORT
+ROUTER_AET
+
+SS_AUTH_URL
+SS_BASE_URL
+SS_ORG_ID
+SS_CLIENT_ID
+SS_CLIENT_SECRET
+
+TEMP_DIR
+LOG_FILE
+
+Semua konfigurasi dapat diatur melalui environment variable.
+
+🚀 Menjalankan Aplikasi
+
 pip install -r requirements.txt
 
-# Jalankan server:
 python app.py
 
-# Swagger UI: http://127.0.0.1:5000/api/docs
+API tersedia di:
+http://localhost:5000/api
+Swagger UI:
+http://localhost:5000/api/docs
 ```
+📚 API Specification
+1. General Endpoints
 
-Catatan: `.env` dimuat otomatis oleh `app.py` (menggunakan `python-dotenv`). Untuk keamanan, pertimbangkan menyimpan `CLIENT_SECRET` di vault/secret manager saat deploy.
+| Endpoint | Method | Description                     |
+|----------|--------|---------------------------------|
+| /halo    | GET    | Health check                    |
+| /token   | GET    | Mendapatkan access token SatuSehat |
 
+2. FHIR Resource Endpoints
 
-=============================
+| Endpoint      | Method | Description                | Body                  |
+|---------------|--------|----------------------------|-----------------------|
+| /encounter    | POST   | Membuat Encounter          | EncounterInput        |
+| /service-req  | POST   | Membuat ServiceRequest     | ServiceRequestInput   |
+| /observation  | POST   | Membuat Observation        | ObservationInput      |
+| /conclusion   | POST   | Membuat DiagnosticReport   | DiagnosticReportInput |
 
+3. Batch Workflow Endpoints
+
+| Endpoint | Method | Workflow                                                                 | Output                                                                                                   |
+|----------|--------|--------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------|
+| /batch1  | POST   | Encounter → ServiceRequest                                               | { encounter_id, service_request_id }                                                                     |
+| /batch2  | POST   | Observation → DiagnosticReport                                          | { observation_id, diagnostic_report_id }                                                                 |
+| /batch3  | POST   | Encounter → ServiceRequest → ImagingStudy → Observation → DiagnosticReport | { encounter_id, service_request_id, imaging_study_id, observation_id, diagnostic_report_id }             |
+| /batch4  | POST   | Encounter → ServiceRequest → /process (send DICOM) → ImagingStudy → Observation → DiagnosticReport | { encounter_id, service_request_id, dicom_process, imaging_study_id, observation_id, diagnostic_report_id } |
+
+4. ImagingStudy Lookup
+
+| Endpoint  | Method | Description                              |
+|-----------|--------|------------------------------------------|
+| /imageid/ | GET    | Lookup ImagingStudy berdasarkan ACSN     |
+
+5. DICOM Router Processing
+
+| Endpoint        | Method | Description                                      |
+|-----------------|--------|--------------------------------------------------|
+| /dicom/process  | POST   | Ambil DICOM dari PACS → edit tag → kirim ke Router |
+
+🩻 Radiology Workflow Diagram
+
+```Kode
+Encounter
+   ↓
+ServiceRequest
+   ↓
+DICOM Acquisition (Modality)
+   ↓
+PACS (dcm4chee)
+   ↓
+/dicom/process → Router
+   ↓
+ImagingStudy
+   ↓
+Observation (Reading Result)
+   ↓
+DiagnosticReport (Radiology Report)
+```
+🧪 Contoh Request /batch4
+```json
+{
+  "identifier_value": "RG2023I0000175",
+  "subject_id": "P10443013727",
+  "individual_id": "10016869420",
+  "period_start": "2025-08-01T05:57:41+00:00",
+  "noacsn": "20250002",
+  "performer_id": "10000504193",
+  "performer_value": "Tidak tampak kelainan",
+  "conclusion_text": "Tidak tampak bercak pada kedua lapangan paru",
+  "study": "1.2.840.113619.2.55.3.604688433.783.159975"
+}
+```
+🧾 Contoh Response /batch4
+```json
+{
+  "encounter_id": "015aa41f-88d7-4b0b-b5f1-d511522bfa87",
+  "service_request_id": "f3a9c1d2-77c4-4e2b-9a55-1b2c3d4e5f6a",
+  "dicom_process": {
+    "status": "success",
+    "study_uid": "1.2.840.113619.2.55.3.604688433.783.159975",
+    "router": "192.10.10.51:11112"
+  },
+  "imaging_study_id": "75b7e9d0-c079-419c-84f8-8dba7b9cd585",
+  "observation_id": "82b9af58-c98d-4263-9a6f-9a04fdfec43a",
+  "diagnostic_report_id": "b9283cb6-b7d2-4cd4-8b3e-6e17f1ab1d9d"
+}
+```
+🛠 Teknologi yang Digunakan
+
+Flask + Flask-RESTX
+
+FHIR R4 (SatuSehat)
+
+dcm4chee PACS
+
+dcmodify (dcmtk)
+
+storescu (dcmtk)
+
+WADO-RS
+
+Python requests
+
+![deskripsi gambar](images/satset-alur.png)
+
+![deskripsi gambar](images/satset-dcm.png)
+
+![deskripsi gambar](images/satset-fhir.png)
+
+![deskripsi gambar](images/satset-batch.png)
+
+![deskripsi gambar](images/satset-tool.png)
 
