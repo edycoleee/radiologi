@@ -1,0 +1,20 @@
+services:
+  dicom-gateway:
+    build: .
+    container_name: dicom_gateway_app
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./logs:/app/logs
+      - dicom_temp:/tmp/dicom_gateway_tmp
+    # Menginstruksikan docker-compose untuk membaca file .env
+    env_file:
+      - .env
+    # Tetap definisikan environment jika ingin melakukan override atau mapping manual
+    environment:
+      - LOG_FILE=/app/logs/app_dicom.log
+      - TEMP_DIR=/tmp/dicom_gateway_tmp
+    restart: always
+
+volumes:
+  dicom_temp:
