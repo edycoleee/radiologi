@@ -105,8 +105,8 @@ Semua endpoint dipisahkan secara modular untuk memudahkan maintenance, debugging
 .env
 ```env
 # --- PACS & ROUTER CONFIG ---
-DCM4CHEE_URL=http://192.10.10.23:8081/dcm4chee-arc/aets/DCM4CHEE
-ROUTER_IP=192.10.10.51
+DCM4CHEE_URL=http://<ip-pacs>:8081/dcm4chee-arc/aets/DCM4CHEE
+ROUTER_IP=<ip dicom router>
 ROUTER_PORT=11112
 ROUTER_AET=DCMROUTER
 

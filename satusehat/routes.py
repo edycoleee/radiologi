@@ -14,16 +14,14 @@ from .service_batch3 import process_batch3
 from .service_batch4 import process_batch4
 from .service_dicom import process_dicom
 
-
-
-ns = Namespace("satset", description="Satu Sehat endpoints") 
+satset_ns = Namespace("satset", description="Satu Sehat endpoints")
 dicom_ns = Namespace("dicom", description="DICOM Router / PACS Processing")
 
 
 # -------------------------------
 # Swagger Models
 # -------------------------------
-encounter_input = ns.model(
+encounter_input = satset_ns.model(
     "EncounterInput",
     {
         "identifier_value": fields.String(description="No register / identifier value", example="RG2023I0000175"),
@@ -41,7 +39,7 @@ encounter_input = ns.model(
     },
 )
 
-servicereq_input = ns.model(
+servicereq_input = satset_ns.model(
     "ServiceRequestInput",
     {
             "identifier_value": fields.String(description="No register / identifier value", example="RG2023I0000176"),
@@ -56,7 +54,7 @@ servicereq_input = ns.model(
     },
 )
 
-batch1_input = ns.model(
+batch1_input = satset_ns.model(
     "Batch1Input",
     {
         "identifier_value": fields.String(description="No register", example="RG2023I0000175"),
@@ -83,7 +81,7 @@ batch1_input = ns.model(
     },
 )
 
-observation_input = ns.model(
+observation_input = satset_ns.model(
     "ObservationInput",
     {
         "identifier_value": fields.String(example="RG2023I0000174"),
@@ -105,7 +103,7 @@ observation_input = ns.model(
     },
 )
 
-diagnostic_input = ns.model(
+diagnostic_input = satset_ns.model(
     "DiagnosticReportInput",
     {
         "identifier_value": fields.String(example="RG2023I0000174"),
@@ -127,7 +125,7 @@ diagnostic_input = ns.model(
 )
 
 
-batch2_input = ns.model(
+batch2_input = satset_ns.model(
     "Batch2Input",
     {
         "identifier_value": fields.String(example="RG2023I0000174"),
@@ -152,7 +150,7 @@ batch2_input = ns.model(
     },
 )
 
-batch3_input = ns.model(
+batch3_input = satset_ns.model(
     "Batch3Input",
     {
         "identifier_value": fields.String(example="RG2023I0000175"),
@@ -196,13 +194,13 @@ batch3_input = ns.model(
 dicom_model = dicom_ns.model(
     "DicomProcessInput",
     {
-        "study": fields.String(required=True, example="1.2.840.113619.2.55.3.604688433.783.159975"),
+        "study": fields.String( example="1.2.840.113619.2.55.3.604688433.783.159975"),
         "patientid": fields.String(example="P10443013727"),
         "accesionnum": fields.String(example="20250002"),
     },
 )
 
-batch4_input = ns.model(
+batch4_input = satset_ns.model(
     "Batch4Input",
     {
         "identifier_value": fields.String(example="RG2023I0000175"),
@@ -251,13 +249,13 @@ batch4_input = ns.model(
 # Routes
 # -------------------------------
 
-@ns.route("/halo")
+@satset_ns.route("/halo")
 class Halo(Resource):
     def get(self):
         return {"message": "Halo dari Satu Sehat!"}, 200
 
 
-@ns.route("/token")
+@satset_ns.route("/token")
 class Token(Resource):
     def get(self):
         token, err = get_access_token()
@@ -266,8 +264,8 @@ class Token(Resource):
         return {"access_token": token}, 200
 
 
-@ns.route("/encounter")
-@ns.expect(encounter_input, validate=False)
+@satset_ns.route("/encounter")
+@satset_ns.expect(encounter_input, validate=False)
 class EncounterCreate(Resource):
     def post(self):
         data = request.get_json(silent=True) or {}
@@ -285,8 +283,8 @@ class EncounterCreate(Resource):
         return post_fhir(url, token, encounter)
 
 
-@ns.route("/service-req")
-@ns.expect(servicereq_input, validate=False)
+@satset_ns.route("/service-req")
+@satset_ns.expect(servicereq_input, validate=False)
 class ServiceRequestCreate(Resource):
     def post(self):
         data = request.get_json(silent=True) or {}
@@ -303,8 +301,8 @@ class ServiceRequestCreate(Resource):
         url = Config.SS_BASE_URL.rstrip("/") + "/ServiceRequest"
         return post_fhir(url, token, sreq)
 
-@ns.route("/batch1")
-@ns.expect(batch1_input, validate=False)
+@satset_ns.route("/batch1")
+@satset_ns.expect(batch1_input, validate=False)
 class Batch1(Resource):
     def post(self):
         data = request.get_json(silent=True) or {}
@@ -313,8 +311,8 @@ class Batch1(Resource):
         return result, status
 
 
-@ns.route("/observation")
-@ns.expect(observation_input, validate=False)
+@satset_ns.route("/observation")
+@satset_ns.expect(observation_input, validate=False)
 class ObservationCreate(Resource):
     def post(self):
         data = request.get_json(silent=True) or {}
@@ -334,8 +332,8 @@ class ObservationCreate(Resource):
         url = Config.SS_BASE_URL.rstrip("/") + "/Observation"
         return post_fhir(url, token, obs)
 
-@ns.route("/conclusion")
-@ns.expect(diagnostic_input, validate=False)
+@satset_ns.route("/conclusion")
+@satset_ns.expect(diagnostic_input, validate=False)
 class DiagnosticCreate(Resource):
     def post(self):
         data = request.get_json(silent=True) or {}
@@ -355,16 +353,16 @@ class DiagnosticCreate(Resource):
         url = Config.SS_BASE_URL.rstrip("/") + "/DiagnosticReport"
         return post_fhir(url, token, drep)
 
-@ns.route("/batch2")
-@ns.expect(batch2_input, validate=False)
+@satset_ns.route("/batch2")
+@satset_ns.expect(batch2_input, validate=False)
 class Batch2(Resource):
     def post(self):
         data = request.get_json(silent=True) or {}
         result, status = process_batch2(data)
         return result, status
 
-@ns.route("/batch3")
-@ns.expect(batch3_input, validate=False)
+@satset_ns.route("/batch3")
+@satset_ns.expect(batch3_input, validate=False)
 class Batch3(Resource):
     def post(self):
         data = request.get_json(silent=True) or {}
@@ -372,7 +370,7 @@ class Batch3(Resource):
         return result, status
 
 
-@ns.route("/imageid/<string:acsn>")
+@satset_ns.route("/imageid/<string:acsn>")
 class ImageId(Resource):
     def get(self, acsn):
         result, status = lookup_imaging_by_acsn(acsn)
@@ -386,8 +384,8 @@ class ProcessDicom(Resource):
         result, status = process_dicom(data)
         return result, status
 
-@ns.route("/batch4")
-@ns.expect(batch4_input, validate=False)
+@satset_ns.route("/batch4")
+@satset_ns.expect(batch4_input, validate=False)
 class Batch4(Resource):
     def post(self):
         data = request.get_json(silent=True) or {}

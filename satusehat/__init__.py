@@ -1,1 +1,1 @@
-from .routes import ns as satset_ns
+from .routes import satset_ns, dicom_ns
