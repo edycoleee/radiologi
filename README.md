@@ -90,24 +90,29 @@ Semua endpoint dipisahkan secara modular untuk memudahkan maintenance, debugging
 
 ---
 
-# ⚙️ Konfigurasi (config.py)
+# ⚙️ KOnfigurasi dan .env
 
-```python
-DCM4CHEE_URL
-ROUTER_IP
-ROUTER_PORT
-ROUTER_AET
+.env
+```env
+# --- PACS & ROUTER CONFIG ---
+DCM4CHEE_URL=http://192.10.10.23:8081/dcm4chee-arc/aets/DCM4CHEE
+ROUTER_IP=192.10.10.51
+ROUTER_PORT=11112
+ROUTER_AET=DCMROUTER
 
-SS_AUTH_URL
-SS_BASE_URL
-SS_ORG_ID
-SS_CLIENT_ID
-SS_CLIENT_SECRET
+# --- SATUSEHAT CONFIG ---
+SS_AUTH_URL=https://api-satusehat.kemkes.go.id/oauth2/v1
+SS_BASE_URL=https://api-satusehat.kemkes.go.id/fhir-r4/v1
+SS_ORG_ID=10999999
+SS_CLIENT_ID=Gzxxxxxxxxx
+SS_CLIENT_SECRET=fbPyxxxxxxxxxxxxxxxxx
 
-TEMP_DIR
-LOG_FILE
+# --- SYSTEM CONFIG ---
+LOG_FILE=app_dicom.log
+TEMP_DIR=/tmp/dicom_gateway_tmp
+```
 
-Semua konfigurasi dapat diatur melalui environment variable.
+```py
 
 🚀 Menjalankan Aplikasi
 
