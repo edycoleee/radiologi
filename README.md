@@ -247,4 +247,3 @@ Python requests
 
 ![deskripsi gambar](images/satset-tool.png)
 
-test git
