@@ -82,8 +82,18 @@ project/
 │   └── service_batch4.py
 │
 └── common/
-├── auth.py
-└── fhir_client.py
+│   ├── auth.py
+│   └── fhir_client.py
+└── static/
+│   ├── page.css
+│   └── page.js
+└── templates/
+│   ├── auth.py
+│   └── page.html
+├── .env
+├── requirements.txt
+├── Dockerfile
+└── docker-compose.yml
 ```
 
 Semua endpoint dipisahkan secara modular untuk memudahkan maintenance, debugging, dan pengembangan.
