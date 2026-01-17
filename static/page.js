@@ -1,3 +1,76 @@
+// =========================
+// ALERT SYSTEM
+// =========================
+function showAlert(message, type = "info") {
+    const box = document.getElementById('alertBox');
+    box.className = `alert alert-${type}`;
+    box.textContent = message;
+    box.classList.remove('d-none');
+
+    // Auto hide setelah 4 detik
+    setTimeout(() => {
+        box.classList.add('d-none');
+    }, 4000);
+}
+
+
+// =========================
+// LOADING BADGE
+// =========================
+function showLoading() {
+    const badge = document.getElementById('loadingBadge');
+    badge.classList.remove('d-none');
+}
+
+function hideLoading() {
+    const badge = document.getElementById('loadingBadge');
+    badge.classList.add('d-none');
+}
+
+
+// =========================
+// GENERIC POST JSON (AMAN)
+// =========================
+async function postJson(url, body, resultId) {
+    showLoading();
+    showAlert("Memproses permintaan...", "warning");
+
+    try {
+        const resp = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+
+        const text = await resp.text();
+        let data;
+
+        try {
+            data = JSON.parse(text);
+        } catch {
+            data = { raw: text };
+        }
+
+        showResult(resultId, data, resp.status);
+
+        if (!resp.ok) {
+            showAlert(`Error: ${data.message || "Terjadi kesalahan"}`, "danger");
+        } else {
+            showAlert("Permintaan berhasil diproses", "success");
+        }
+
+    } catch (err) {
+        showAlert(`Network Error: ${err.message}`, "danger");
+        showResult(resultId, { error: err.message }, 'ERR');
+
+    } finally {
+        hideLoading();   // SELALU jalan
+    }
+}
+
+
+
+
 // Helper: show JSON result in a box
 function showResult(id, data, status) {
     const box = document.getElementById(id);
@@ -6,35 +79,35 @@ function showResult(id, data, status) {
     box.textContent = `HTTP ${status}\n` + JSON.stringify(data, null, 2);
 }
 
-// Helper: generic POST JSON
-async function postJson(url, body, resultId) {
-    try {
-        const resp = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        });
-        const text = await resp.text();
-        let data;
-        try { data = JSON.parse(text); } catch { data = { raw: text }; }
-        showResult(resultId, data, resp.status);
-    } catch (err) {
-        showResult(resultId, { error: err.message }, 'ERR');
-    }
-}
+// // Helper: generic POST JSON
+// async function postJson(url, body, resultId) {
+//     try {
+//         const resp = await fetch(url, {
+//             method: 'POST',
+//             headers: { 'Content-Type': 'application/json' },
+//             body: JSON.stringify(body)
+//         });
+//         const text = await resp.text();
+//         let data;
+//         try { data = JSON.parse(text); } catch { data = { raw: text }; }
+//         showResult(resultId, data, resp.status);
+//     } catch (err) {
+//         showResult(resultId, { error: err.message }, 'ERR');
+//     }
+// }
 
-// Helper: GET JSON
-async function getJson(url, resultId) {
-    try {
-        const resp = await fetch(url);
-        const text = await resp.text();
-        let data;
-        try { data = JSON.parse(text); } catch { data = { raw: text }; }
-        showResult(resultId, data, resp.status);
-    } catch (err) {
-        showResult(resultId, { error: err.message }, 'ERR');
-    }
-}
+// // Helper: GET JSON
+// async function getJson(url, resultId) {
+//     try {
+//         const resp = await fetch(url);
+//         const text = await resp.text();
+//         let data;
+//         try { data = JSON.parse(text); } catch { data = { raw: text }; }
+//         showResult(resultId, data, resp.status);
+//     } catch (err) {
+//         showResult(resultId, { error: err.message }, 'ERR');
+//     }
+// }
 
 // Helper: serialize form to object
 function formToJson(form) {

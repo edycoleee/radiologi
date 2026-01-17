@@ -25,7 +25,7 @@ source .venv/bin/activate
 
 ```bash
 pip install --upgrade pip
-pip install flask flask-restx
+pip install flask flask-restx requests python-dotenv
 ```
 
 4) Verifikasi instalasi:
