@@ -1,5 +1,9 @@
 #config.py
 import os
+from dotenv import load_dotenv
+
+# Memuat file .env
+load_dotenv()
 
 class Config:
     # --- PACS & ROUTER CONFIG ---
@@ -13,9 +17,9 @@ class Config:
     # Menggunakan environment variable agar credential tidak hardcoded di production
     SS_AUTH_URL = os.getenv("SS_AUTH_URL", "https://api-satusehat.kemkes.go.id/oauth2/v1")
     SS_BASE_URL = os.getenv("SS_BASE_URL", "https://api-satusehat.kemkes.go.id/fhir-r4/v1")
-    SS_ORG_ID = os.getenv("SS_ORG_ID", "100025702")
-    SS_CLIENT_ID = os.getenv("SS_CLIENT_ID", "Gzn7YjXv0tQrNIlzgFliVAiBBkLLgVLEYsuXqmNVnwfapAxD")
-    SS_CLIENT_SECRET = os.getenv("SS_CLIENT_SECRET", "fbPy8SDIkcrx1V7OaH1mHfx0xebHwBJBL4Fw8gW0Gi6MjIFrt9vWgW7NOIVNibGt")
+    SS_ORG_ID = os.getenv("SS_ORG_ID")
+    SS_CLIENT_ID = os.getenv("SS_CLIENT_ID")
+    SS_CLIENT_SECRET = os.getenv("SS_CLIENT_SECRET")
 
     # --- SYSTEM CONFIG ---
     LOG_FILE = os.getenv("LOG_FILE", "app_dicom.log")
